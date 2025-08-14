@@ -3,18 +3,30 @@ import argparse
 import requests
 from dotenv import load_dotenv
 from pymongo import MongoClient
-from datetime import datetime
+from datetime import datetime, timezone
 
-# Load environment variables
-load_dotenv()
+# Load variables from ENV_TEMPLATE instead of .env
+load_dotenv(dotenv_path="ENV_TEMPLATE")
+
+
 API_KEY = os.getenv("API_KEY")
+DB_HOST = os.getenv("DB_HOST")
+DB_USER = os.getenv("DB_USER")
+DB_PASS = os.getenv("DB_PASS")
+DB_NAME = os.getenv("DB_NAME", "etl_database")  # default if not set
 
 if not API_KEY:
     raise ValueError("API_KEY not found in environment variables.")
 
-# MongoDB connection
-client = MongoClient("mongodb://localhost:27017/")
-db = client["etl_database"]
+# Build MongoDB connection string
+if DB_USER and DB_PASS:
+    mongo_uri = f"mongodb://{DB_USER}:{DB_PASS}@{DB_HOST}/{DB_NAME}?authSource=admin"
+else:
+    mongo_uri = f"mongodb://{DB_HOST}/{DB_NAME}"
+
+# Connect to MongoDB
+client = MongoClient(mongo_uri)
+db = client[DB_NAME]
 collection = db["abuseipdb_raw"]
 
 def extract(ip_address: str, max_age_days: int = 90):
@@ -46,7 +58,8 @@ def transform(data: dict):
         "hostnames": data.get("data", {}).get("hostnames"),
         "totalReports": data.get("data", {}).get("totalReports"),
         "lastReportedAt": data.get("data", {}).get("lastReportedAt"),
-        "fetchedAt": datetime.utcnow()
+        "fetchedAt": datetime.now(timezone.utc)
+
     }
 
 def load(record: dict):
@@ -54,10 +67,10 @@ def load(record: dict):
     collection.insert_one(record)
 
 if __name__ == "__main__":
-    # Command-line arguments
     parser = argparse.ArgumentParser(description="AbuseIPDB ETL Connector")
     parser.add_argument("--ip", type=str, required=True, help="IP address to check")
-    parser.add_argument("--days", type=int, default=90, help="Max age of reports in days")
+    parser.add_argument("--days", type=int, default=int(os.getenv("MAX_AGE_DAYS", 90)),
+                        help="Max age of reports in days")
     args = parser.parse_args()
 
     print(f"Fetching data for IP: {args.ip}")

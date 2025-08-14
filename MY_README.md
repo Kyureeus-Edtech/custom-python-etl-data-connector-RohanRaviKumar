@@ -14,3 +14,4 @@
     pip install -r requirements.txt
 4. Start MongoDB locally or update the connection string in `etl_connector.py`.
 5. Run the connector:
+    python etl_connector.py

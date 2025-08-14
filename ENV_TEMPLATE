@@ -1,5 +1,5 @@
 # API credentials
-API_KEY=4afcd48cf220bdc4cfdbc2782b8be23e2011e89d4e83a002c3a490e47f5a12f34232bb9a314703dc
+API_KEY=your_api_key_here
 
 # MongoDB connection details
 DB_HOST=localhost
